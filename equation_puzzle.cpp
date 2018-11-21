@@ -38,7 +38,8 @@ class EquationPuzzle
 };
 
 
-EquationPuzzle::EquationPuzzle():alphabetNum(0),
+EquationPuzzle::EquationPuzzle():alphabetNum(0),firstMultiplierLength(0),
+        secondMultiplierLength(0), productLength(0),
         firstMultiplier(NULL), secondMultiplier(NULL), product(NULL)
 {
     memset(alphabetMap, 0xFF, sizeof(alphabetMap));
@@ -194,12 +195,18 @@ int main(int argc, char **argv)
     }   
     
     EquationPuzzle puzzle;
-    if( puzzle.readInputData(argv[1]) ) {
-        puzzle.lookupNumberSet();        
-        return 0;
+    try {
+        if( puzzle.readInputData(argv[1]) ) {
+            puzzle.lookupNumberSet();        
+            return 0;
+        }
+        else {
+            std::cout << "Incorrect Data File.";
+            return -1;
+        }
     }
-    else {
-        std::cout << "Incorrect Data File.";
-        return -1;
+    catch (const std::exception& e)
+    {
+        return -1;        
     }
 }
