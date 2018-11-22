@@ -1,11 +1,10 @@
 import sys
 import math
-import time
 import numpy as np
 
 
 # We're using 70% of the data for training
-TRAIN_SPLIT = 0.7
+TRAIN_SPLIT = 0.8
 dtype = np.float64
 GENDER_MALE = 1
 GENDER_FEMALE = 0
@@ -81,85 +80,6 @@ def transform( X):
 
     return Xa
 
-def transform_csr_matrix(X):
-    dtype = np.float64
-    feature_names = g_feature_names
-    vocab = g_vocabulary
-
-    # Process everything as sparse regardless of setting
-    X = [X] if isinstance(X, Mapping) else X
-
-    indices = array("i")
-    indptr = array("i", [0])
-    # XXX we could change values to an array.array as well, but it
-    # would require (heuristic) conversion of dtype to typecode...
-    values = []
-
-    # collect all the possible feature names and build sparse matrix at
-    # same time
-
-    for x in X:
-        for f, v in x.items():
-            f = "%s%s%s" % (f, "=", v)
-            v = 1
-            if f in vocab:
-                indices.append(vocab[f])
-                values.append(dtype(v))
-
-        indptr.append(len(indices))
-
-    if len(indptr) == 1:
-        raise ValueError("Sample sequence X is empty.")
-
-    indices = np.frombuffer(indices, dtype=np.intc)
-    indptr = np.frombuffer(indptr, dtype=np.intc)
-    shape = (len(indptr) - 1, len(vocab))
-
-    result_matrix = sp.csr_matrix((values, indices, indptr),
-                                  shape=shape, dtype=dtype)
-
-    result_matrix.sort_indices()
-
-    return result_matrix
-
-
-def tosequence(x):
-    """Cast iterable x to a Sequence, avoiding a copy if possible.
-
-    Parameters
-    ----------
-    x : iterable
-    """
-    if isinstance(x, Mapping):  # single sample
-        return [x]
-    elif isinstance(x, np.ndarray):
-        return np.asarray(x)
-    elif isinstance(x, Sequence):
-        return x
-    else:
-        return list(x)
-    
-
-def transform_flat_matrix( X):
-    dtype = np.float64
-    #print("Transform :\n", X, type(X))
-    #print(X)
-    #print("After sequence :", X)
-    Xa = np.zeros((len(X), len(g_vocabulary)), dtype=dtype)
-    #print("Xa shape:", Xa.shape)
-
-    for i, x in enumerate(X):
-        for f, v in x.items():
-            f = "%s%s%s" % (f, "=", v)
-            v = 1
-            try:
-                Xa[i, g_vocabulary[f]] = dtype(v)
-            except KeyError:
-                pass
-
-    return Xa
-
-
 
 def Sigmoid(z):
     try:
@@ -177,9 +97,6 @@ def Hypothesis(theta, x):
         z += theta[pos]
     return Sigmoid(z)
 
-##For each member of the dataset, the result (Y) determines which variation of the cost function is used
-##The Y = 0 cost function punishes high probability estimations, and the Y = 1 it punishes low scores
-##The "punishment" makes the change in the gradient of ThetaCurrent - Average(CostFunction(Dataset)) greater
 def Cost_Function(X,Y,theta,m):
     sumOfErrors = 0
     for i in range(m):
@@ -192,13 +109,9 @@ def Cost_Function(X,Y,theta,m):
         sumOfErrors += error
     const = -1/m
     J = const * sumOfErrors
-    print( 'cost is ', J )
+    #print( 'cost is ', J )
     return J
 
-##This function creates the gradient component for each Theta value
-##The gradient is the partial derivative by Theta of the current value of theta minus
-##a "learning speed factor aplha" times the average of all the cost functions for that theta
-##For each Theta there is a cost function calculated for each member of the dataset
 def Cost_Function_Derivative(X,Y,theta,j,m,alpha):
     sumErrors = 0
     for i in range(m):
@@ -214,10 +127,6 @@ def Cost_Function_Derivative(X,Y,theta,j,m,alpha):
     return J
 
 
-
-##For each theta, the partial differential
-##The gradient, or vector from the current point in Theta-space (each theta value is its own dimension) to the more accurate point,
-##is the vector with each dimensional component being the partial differential for each theta value
 def Gradient_Descent(X,Y,theta,m,alpha):
     new_theta = []
     for j in range(len(theta)):
@@ -227,54 +136,26 @@ def Gradient_Descent(X,Y,theta,m,alpha):
         new_theta.append(new_theta_value)
     return new_theta
 
-def Logistic_Regression_By_Stochastic_Gradient_Descent(X,Y,theta,alpha):
+def Logistic_Regression_By_Stochastic_Gradient_Descent(X,Y,alpha, theta):
     m = len(Y)
     n = len(features_index) # here we have 6 features
+#    best_theta = []
+#    min_cost = 100
     for i in range(m):
         for idx in range(n):# features
             j = X[i][idx]
-            print("j type:", type(j), j)
-            print("x type:", type(X), X.shape)            
-            print(theta.shape)
-            print(X[i].shape)
-            print(Y[i].shape)
             theta[j] = theta[j] - alpha * (Hypothesis(theta, X[i]) - Y[i])  #xij is 1
-        if i % 100 == 0:
-            cost = Cost_Function(X,Y,theta,m)
-            print('cost is', cost)
-            
-    
-
-##The high level function for the LR algorithm which, for a number of steps (num_iters) finds gradients which take
-##the Theta values (coefficients of known factors) from an estimation closer (new_theta) to their "optimum estimation" which is the
-##set of values best representing the system in a linear combination model
-def Logistic_Regression(X,Y,alpha,theta,num_iters):
-    min_cost = 100
-    save_theta = theta    
-    m = len(Y)
-    for x in range(num_iters):
-        #print("iteration:", x)
-        new_theta = Gradient_Descent(X,Y,theta,m,alpha)
-        theta = new_theta
-        if x % 100 == 0:
-            #here the cost function is used to present the final hypothesis of the model in the same form for each gradient-step iteration
-            cost = Cost_Function(X,Y,theta,m)
-            if cost < min_cost:
-                min_cost = cost
-                save_theta = theta
-            #print( 'theta ', theta )
-            print( 'cost is ', cost)
+        #if i % 10 == 0:
+        #    cost = Cost_Function(X,Y,theta,m)
+            #print('cost is', cost)
+       #     if cost < min_cost:
+       #         min_cost = cost
+       #         best_theta = theta
+    #print("min_cost:", min_cost)
+    return theta
                 
-    #print("max score:{}".format(max_score))
-    #print("theta:{}".format(save_theta))
-    #current_score = Calculate_Score(save_theta)
-    return save_theta
-
-##This method compares the accuracy of the model generated by the scikit library with the model generated by this implementation
 def Calculate_Score(theta):
     score = 0
-    #first scikit LR is tested for each independent var in the dataset and its prediction is compared against the dependent var
-    #if the prediction is the same as the dataset measured value it counts as a point for thie scikit version of LR
     length = len(X_validation)
     for i in range(length):
         h_value = Hypothesis(theta, X_validation[i])
@@ -285,24 +166,18 @@ def Calculate_Score(theta):
         answer = Y_validation[i]
         if prediction == answer:
             score += 1
-    #the same process is repeated for the implementation from this module and the scores compared to find the higher match-rate
+
     score = float(score) / float(length)
 
     #print( 'score:', score )
     return score
 
-print(time.strftime("Start execut time:%H:%M:%S", time.localtime()))
-alpha = 0.1
 
 fileName = "training_dataset.txt";
 
-#names = np.genfromtxt(fileName, delimiter = ",", dtype = ["U25", float], 
-#                      converters = {1:lambda s: 1.0 if s.strip() == "male" else 0.0}, 
-#                      autostrip = True) 
-
 names = np.genfromtxt(fileName, delimiter = ",", dtype = "U25",
                       autostrip = True) 
-#print(names)
+
 np.random.shuffle(names)
 
 #print("======Raw data======\n")
@@ -310,10 +185,6 @@ np.random.shuffle(names)
 #print("Fidel", features("Fidel"))
 #print("Jean-Luc", features("Jean-Luc"))
 #print("Jo Ann", features("Jo Ann"))
-
-
-
-# clean up data
 
 
 features = np.vectorize(features)
@@ -329,7 +200,7 @@ Y_train, Y_validation = Y[:int(TRAIN_SPLIT * len(Y))], Y[int(TRAIN_SPLIT * len(Y
 fit(X_train)
 
 initial_theta = np.zeros((len(g_feature_names), 1), dtype=dtype)
-print("initial_theta:", initial_theta.shape)
+#print("initial_theta:", initial_theta.shape)
 #print("g_feature_names shape:", type(g_feature_names))
 #with open("feature_names.txt", "w") as f:
 #    f.write("\n".join(g_feature_names))
@@ -340,8 +211,8 @@ print("initial_theta:", initial_theta.shape)
 #        f.write("{}=>{}\n".format(k, v))
 
 
-transformed = transform(features(["Rey", "Fidel", "Jean-Luc", "Jo Ann"]))
-print(transformed)
+#transformed = transform(features(["Rey", "Fidel", "Jean-Luc", "Jo Ann"]))
+#print(transformed)
 #print("After transformed:\n", transformed )
 #np.savetxt('transformed.out', transformed, delimiter=',', fmt='%d')
 
@@ -352,16 +223,15 @@ print(transformed)
 #normalized_X_train = normalize(transfromed_X_train)
 #print("normalized_X_train:\n", normalized_X_train)
 X_validation = transform(X_validation)
-print(X_validation)
+#print(X_validation)
 iterations = len(X_validation) 
-Logistic_Regression_By_Stochastic_Gradient_Descent(transform(X_train),
-                               Y_train,alpha,initial_theta)
-print(time.strftime("Ended execut time:%H:%M:%S", time.localtime()))
-# train scikit learn model
-#from sklearn.linear_model import LogisticRegression
-#clf = LogisticRegression()
-#clf.fit(normalize(transform(X_train)),Y_train)
-#print( 'score Scikit learn: ', clf.score(X_test,Y_test) )
+
+alpha = 0.54
+theta = Logistic_Regression_By_Stochastic_Gradient_Descent(
+        transform(X_train), Y_train,
+        alpha,initial_theta)
+
+#Calculate_Score(theta)
 
 def do_test():
     #fileName_test = "test_dataset.txt";
@@ -371,13 +241,11 @@ def do_test():
                           autostrip = True) 
     X_test = features(names_test) 
     X_test = transform(X_test)
-    X_test = normalize(X_test)
-    print(X_test.shape)
     length = len(X_test)
     predict = 0
     gender = "female"
     for i in range(length):
-        h_value = Hypothesis(Best_theta, X_test[i])    
+        h_value = Hypothesis(theta, X_test[i])    
         if h_value > 0.5:
             predict = 1
         else:
@@ -387,6 +255,6 @@ def do_test():
         print("{},{}".format(names_test[i], gender))  
 
 
-#do_test()                     
+do_test()                     
 
 
