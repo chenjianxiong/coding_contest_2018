@@ -69,7 +69,7 @@ def fit(X):
 
 
 def transform( X):    
-    Xa = np.zeros((len(X), 6), dtype=dtype)
+    Xa = np.zeros((len(X), 6), dtype=int)
 
     for i, x in enumerate(X):
         for f, v in x.items():
@@ -213,6 +213,8 @@ def Cost_Function_Derivative(X,Y,theta,j,m,alpha):
     J = constant * sumErrors
     return J
 
+
+
 ##For each theta, the partial differential
 ##The gradient, or vector from the current point in Theta-space (each theta value is its own dimension) to the more accurate point,
 ##is the vector with each dimensional component being the partial differential for each theta value
@@ -224,6 +226,24 @@ def Gradient_Descent(X,Y,theta,m,alpha):
         new_theta_value = theta[j] - CFDerivative
         new_theta.append(new_theta_value)
     return new_theta
+
+def Logistic_Regression_By_Stochastic_Gradient_Descent(X,Y,theta,alpha):
+    m = len(Y)
+    n = len(features_index) # here we have 6 features
+    for i in range(m):
+        for idx in range(n):# features
+            j = X[i][idx]
+            print("j type:", type(j), j)
+            print("x type:", type(X), X.shape)            
+            print(theta.shape)
+            print(X[i].shape)
+            print(Y[i].shape)
+            theta[j] = theta[j] - alpha * (Hypothesis(theta, X[i]) - Y[i])  #xij is 1
+        if i % 100 == 0:
+            cost = Cost_Function(X,Y,theta,m)
+            print('cost is', cost)
+            
+    
 
 ##The high level function for the LR algorithm which, for a number of steps (num_iters) finds gradients which take
 ##the Theta values (coefficients of known factors) from an estimation closer (new_theta) to their "optimum estimation" which is the
@@ -333,9 +353,9 @@ print(transformed)
 #print("normalized_X_train:\n", normalized_X_train)
 X_validation = transform(X_validation)
 print(X_validation)
-#iterations = len(X_validation) 
-iterations = 1
-Best_theta = Logistic_Regression(transform(X_train),Y_train,alpha,initial_theta,iterations)
+iterations = len(X_validation) 
+Logistic_Regression_By_Stochastic_Gradient_Descent(transform(X_train),
+                               Y_train,alpha,initial_theta)
 print(time.strftime("Ended execut time:%H:%M:%S", time.localtime()))
 # train scikit learn model
 #from sklearn.linear_model import LogisticRegression
