@@ -1,27 +1,12 @@
-"""
-This program performs two different logistic regression implementations on two
-different datasets of the format [float,float,boolean], one
-implementation is in this file and one from the sklearn library. The program
-then compares the two implementations for how well the can predict the given 
-outcome for each input tuple in the datasets.
-
-@author Per Harald Borgen
-"""
 import sys
 import math
+import time
 import numpy as np
-
-
-# scale larger positive and values to between -1,1 depending on the largest
-# value in the data
 
 
 # We're using 70% of the data for training
 TRAIN_SPLIT = 0.7
 dtype = np.float64
-MAX_VALUE = dtype(0.0)
-MIN_VALUE = dtype(0.0)
-MEAN_VALUE = dtype(0.0)
 GENDER_MALE = 1
 GENDER_FEMALE = 0
 
@@ -83,9 +68,6 @@ def fit(X):
     g_vocabulary = vocab
 
 
-def normalize(X):
-    return (X - MEAN_VALUE) / MAX_VALUE
-
 def transform( X):    
     Xa = np.zeros((len(X), 6), dtype=dtype)
 
@@ -99,6 +81,85 @@ def transform( X):
 
     return Xa
 
+def transform_csr_matrix(X):
+    dtype = np.float64
+    feature_names = g_feature_names
+    vocab = g_vocabulary
+
+    # Process everything as sparse regardless of setting
+    X = [X] if isinstance(X, Mapping) else X
+
+    indices = array("i")
+    indptr = array("i", [0])
+    # XXX we could change values to an array.array as well, but it
+    # would require (heuristic) conversion of dtype to typecode...
+    values = []
+
+    # collect all the possible feature names and build sparse matrix at
+    # same time
+
+    for x in X:
+        for f, v in x.items():
+            f = "%s%s%s" % (f, "=", v)
+            v = 1
+            if f in vocab:
+                indices.append(vocab[f])
+                values.append(dtype(v))
+
+        indptr.append(len(indices))
+
+    if len(indptr) == 1:
+        raise ValueError("Sample sequence X is empty.")
+
+    indices = np.frombuffer(indices, dtype=np.intc)
+    indptr = np.frombuffer(indptr, dtype=np.intc)
+    shape = (len(indptr) - 1, len(vocab))
+
+    result_matrix = sp.csr_matrix((values, indices, indptr),
+                                  shape=shape, dtype=dtype)
+
+    result_matrix.sort_indices()
+
+    return result_matrix
+
+
+def tosequence(x):
+    """Cast iterable x to a Sequence, avoiding a copy if possible.
+
+    Parameters
+    ----------
+    x : iterable
+    """
+    if isinstance(x, Mapping):  # single sample
+        return [x]
+    elif isinstance(x, np.ndarray):
+        return np.asarray(x)
+    elif isinstance(x, Sequence):
+        return x
+    else:
+        return list(x)
+    
+
+def transform_flat_matrix( X):
+    dtype = np.float64
+    #print("Transform :\n", X, type(X))
+    #print(X)
+    #print("After sequence :", X)
+    Xa = np.zeros((len(X), len(g_vocabulary)), dtype=dtype)
+    #print("Xa shape:", Xa.shape)
+
+    for i, x in enumerate(X):
+        for f, v in x.items():
+            f = "%s%s%s" % (f, "=", v)
+            v = 1
+            try:
+                Xa[i, g_vocabulary[f]] = dtype(v)
+            except KeyError:
+                pass
+
+    return Xa
+
+
 
 def Sigmoid(z):
     try:
@@ -110,8 +171,10 @@ def Sigmoid(z):
 def Hypothesis(theta, x):
     z = 0
     #print(type(theta), type(x))
-    for i in range(len(theta)):
-        z += x[i]*theta[i]
+    for i in range(len(features_index)):
+        pos = x[i]
+        #print("Hypothesis:", i)
+        z += theta[pos]
     return Sigmoid(z)
 
 ##For each member of the dataset, the result (Y) determines which variation of the cost function is used
@@ -129,7 +192,7 @@ def Cost_Function(X,Y,theta,m):
         sumOfErrors += error
     const = -1/m
     J = const * sumOfErrors
-    #print( 'cost is ', J )
+    print( 'cost is ', J )
     return J
 
 ##This function creates the gradient component for each Theta value
@@ -139,6 +202,7 @@ def Cost_Function(X,Y,theta,m):
 def Cost_Function_Derivative(X,Y,theta,j,m,alpha):
     sumErrors = 0
     for i in range(m):
+        #print("Cost_Function_Derivative:", i)
         xi = X[i]
         xij = xi[j]
         hi = Hypothesis(theta,X[i])
@@ -155,6 +219,7 @@ def Cost_Function_Derivative(X,Y,theta,j,m,alpha):
 def Gradient_Descent(X,Y,theta,m,alpha):
     new_theta = []
     for j in range(len(theta)):
+        #print("Gradient_Descent:", j)
         CFDerivative = Cost_Function_Derivative(X,Y,theta,j,m,alpha)
         new_theta_value = theta[j] - CFDerivative
         new_theta.append(new_theta_value)
@@ -168,6 +233,7 @@ def Logistic_Regression(X,Y,alpha,theta,num_iters):
     save_theta = theta    
     m = len(Y)
     for x in range(num_iters):
+        #print("iteration:", x)
         new_theta = Gradient_Descent(X,Y,theta,m,alpha)
         theta = new_theta
         if x % 100 == 0:
@@ -177,7 +243,7 @@ def Logistic_Regression(X,Y,alpha,theta,num_iters):
                 min_cost = cost
                 save_theta = theta
             #print( 'theta ', theta )
-            #print( 'cost is ', cost))
+            print( 'cost is ', cost)
                 
     #print("max score:{}".format(max_score))
     #print("theta:{}".format(save_theta))
@@ -205,7 +271,7 @@ def Calculate_Score(theta):
     #print( 'score:', score )
     return score
 
-initial_theta = [0,0,0,0,0,0]
+print(time.strftime("Start execut time:%H:%M:%S", time.localtime()))
 alpha = 0.1
 
 fileName = "training_dataset.txt";
@@ -241,11 +307,9 @@ X_train, X_validation = X[:int(TRAIN_SPLIT * len(X))], X[int(TRAIN_SPLIT * len(X
 Y_train, Y_validation = Y[:int(TRAIN_SPLIT * len(Y))], Y[int(TRAIN_SPLIT * len(Y)):]
 
 fit(X_train)
-MAX_VALUE = dtype(len(g_vocabulary))
-MIN_VALUE = dtype(0)
-MEAN_VALUE = dtype((MAX_VALUE + MIN_VALUE) * 0.5)
 
-normalize = np.vectorize(normalize)
+initial_theta = np.zeros((len(g_feature_names), 1), dtype=dtype)
+print("initial_theta:", initial_theta.shape)
 #print("g_feature_names shape:", type(g_feature_names))
 #with open("feature_names.txt", "w") as f:
 #    f.write("\n".join(g_feature_names))
@@ -256,11 +320,10 @@ normalize = np.vectorize(normalize)
 #        f.write("{}=>{}\n".format(k, v))
 
 
-#transformed = transform(features(["Rey", "Fidel", "Jean-Luc", "Jo Ann"]))
+transformed = transform(features(["Rey", "Fidel", "Jean-Luc", "Jo Ann"]))
+print(transformed)
 #print("After transformed:\n", transformed )
-
-#normalized = normalize(transformed)
-#print("After normalized:\n", normalized )
+#np.savetxt('transformed.out', transformed, delimiter=',', fmt='%d')
 
 #print("Beging to train......\n")
 
@@ -269,9 +332,16 @@ normalize = np.vectorize(normalize)
 #normalized_X_train = normalize(transfromed_X_train)
 #print("normalized_X_train:\n", normalized_X_train)
 X_validation = transform(X_validation)
-X_validation = normalize(X_validation)
-iterations = 1000 
-Best_theta = Logistic_Regression(normalize(transform(X_train)),Y_train,alpha,initial_theta,iterations)
+print(X_validation)
+#iterations = len(X_validation) 
+iterations = 1
+Best_theta = Logistic_Regression(transform(X_train),Y_train,alpha,initial_theta,iterations)
+print(time.strftime("Ended execut time:%H:%M:%S", time.localtime()))
+# train scikit learn model
+#from sklearn.linear_model import LogisticRegression
+#clf = LogisticRegression()
+#clf.fit(normalize(transform(X_train)),Y_train)
+#print( 'score Scikit learn: ', clf.score(X_test,Y_test) )
 
 def do_test():
     #fileName_test = "test_dataset.txt";
@@ -297,8 +367,6 @@ def do_test():
         print("{},{}".format(names_test[i], gender))  
 
 
-do_test()    
-    
-                      
+#do_test()                     
 
 
