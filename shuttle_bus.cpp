@@ -48,7 +48,6 @@ void handleInputData(char * fileName)
     if ( fp ) {
         int data = 0;
         int M_columnNumber = 0;
-        int N_rowNumber = 0;
         int col_index = 0;            
         int lastData = 0;
         int bigData = 0;
@@ -57,7 +56,7 @@ void handleInputData(char * fileName)
         int * pCurrentRow = currentRow;
         int * pLastRow = lastRow;
         M_columnNumber = getData(fp, longestData);
-        N_rowNumber = getData(fp, longestData);
+        (void)getData(fp, longestData);
 
         while((data = getData(fp, longestData)) != EOFOFFILE) {
             if (data == SKIPDATA)
