@@ -38,9 +38,8 @@ class EquationPuzzle
 };
 
 
-EquationPuzzle::EquationPuzzle():alphabetNum(0),firstMultiplierLength(0),
-        secondMultiplierLength(0), productLength(0),
-        firstMultiplier(""), secondMultiplier(""), product("")
+EquationPuzzle::EquationPuzzle():alphabetNum(0),
+                             firstMultiplierLength(0),secondMultiplierLength(0), productLength(0)
 {
     memset(alphabetMap, 0xFF, sizeof(alphabetMap));
     for(int i = 0; i < 10; i++)

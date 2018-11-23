@@ -139,20 +139,26 @@ def Gradient_Descent(X,Y,theta,m,alpha):
 def Logistic_Regression_By_Stochastic_Gradient_Descent(X,Y,alpha, theta):
     m = len(Y)
     n = len(features_index) # here we have 6 features
-#    best_theta = []
-#    min_cost = 100
+    best_theta = []
+    min_cost = 100.0
+    max_score = 0.0
     for i in range(m):
         for idx in range(n):# features
             j = X[i][idx]
             theta[j] = theta[j] - alpha * (Hypothesis(theta, X[i]) - Y[i])  #xij is 1
-        #if i % 10 == 0:
-        #    cost = Cost_Function(X,Y,theta,m)
+        if i % 10 == 0:
+            #cost = Cost_Function(X,Y,theta,m)
+            score = Calculate_Score(theta)
+            if score > max_score:
+                max_score = score
+                best_theta = theta
             #print('cost is', cost)
-       #     if cost < min_cost:
-       #         min_cost = cost
-       #         best_theta = theta
+            #if cost < min_cost:
+            #    min_cost = cost
+            #    best_theta = theta
     #print("min_cost:", min_cost)
-    return theta
+    #print("max_score:", max_score)
+    return best_theta
                 
 def Calculate_Score(theta):
     score = 0
@@ -173,7 +179,9 @@ def Calculate_Score(theta):
     return score
 
 
-fileName = "training_dataset.txt";
+fileName = "training_dataset.txt"
+fileName = "/var/www/html/training_dataset.txt"
+
 
 names = np.genfromtxt(fileName, delimiter = ",", dtype = "U25",
                       autostrip = True) 
@@ -244,6 +252,7 @@ def do_test():
     length = len(X_test)
     predict = 0
     gender = "female"
+    #print("theta", theta)
     for i in range(length):
         h_value = Hypothesis(theta, X_test[i])    
         if h_value > 0.5:
