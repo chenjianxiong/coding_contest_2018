@@ -179,7 +179,6 @@ def Calculate_Score(theta):
     return score
 
 
-fileName = "training_dataset.txt"
 fileName = "/var/www/html/training_dataset.txt"
 
 
@@ -253,14 +252,19 @@ def do_test():
     predict = 0
     gender = "female"
     #print("theta", theta)
+    #print(X_test)
     for i in range(length):
-        h_value = Hypothesis(theta, X_test[i])    
+        h_value = Hypothesis(theta, X_test[i])
         if h_value > 0.5:
             predict = 1
         else:
             predict = 0
+                
         if predict == GENDER_MALE:
             gender = "male"
+        else:
+            gender = "female"        
+
         print("{},{}".format(names_test[i], gender))  
 
 
