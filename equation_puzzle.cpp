@@ -1,12 +1,12 @@
-﻿#include <fstream>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <vector>
 #include <set>
 #include <unordered_map>
-#include <regex>
 #include <algorithm>
+#include <string.h>
 
 #define DEBUG 0
 
@@ -14,22 +14,23 @@
 class EquationPuzzle
 {
     private:
-        char DIGITS[10];
+        unsigned char DIGITS[10];
         std::string inputEquation;
-        std::string firstMultiplier;
-        std::string secondMultiplier;
-        std::string product;        
-        char alphabetMap[255];
+        char* firstMultiplier;
+        char* secondMultiplier;
+        char* product;        
+        unsigned char alphabetMap[255];
         char alphabetNum;
-        char firstLetters[3]; // first letter of multipler and product.
-        char lastLetters[3]; // last letter of multipler and product.
+        unsigned char firstLetters[3]; // first letter of multipler and product.
+        unsigned char lastLetters[3]; // last letter of multipler and product.
         int firstMultiplierLength;
         int secondMultiplierLength;
         int productLength;
         char lastDigitOfProduct[10][10];        
     private:
-        int word2Num(const std::string&, int& N);
+        int word2Num(const char* s, int& N);
         void buildAlphabetMap();
+        int getData(const char* , char* );
     public:
         EquationPuzzle();
         ~EquationPuzzle();
@@ -38,10 +39,18 @@ class EquationPuzzle
 };
 
 
-EquationPuzzle::EquationPuzzle():alphabetNum(0),
-                             firstMultiplierLength(0),secondMultiplierLength(0), productLength(0)
+EquationPuzzle::EquationPuzzle():alphabetNum(0),firstMultiplierLength(0),
+        secondMultiplierLength(0), productLength(0)
+        
 {
     memset(alphabetMap, 0xFF, sizeof(alphabetMap));
+    memset(DIGITS, 0, sizeof(DIGITS));
+    memset(firstLetters, 0, sizeof(firstLetters));
+    memset(lastLetters, 0, sizeof(lastLetters));
+    firstMultiplier = NULL;
+    secondMultiplier = NULL;
+    product = NULL;
+        
     for(int i = 0; i < 10; i++)
         for(int j = 0; j < 10; j++)
             lastDigitOfProduct[i][j] = (i * j) % 10;
@@ -49,42 +58,45 @@ EquationPuzzle::EquationPuzzle():alphabetNum(0),
 
 EquationPuzzle::~EquationPuzzle()
 {
+    free(firstMultiplier);
+    free(secondMultiplier); 
+    free(product);
 }
 
-int EquationPuzzle::word2Num(const std::string& inputStr, int& N)
+int EquationPuzzle::word2Num(const char * inputStr, int& N)
 {
     int ret = 0;
     for(int i = 0; i < N; i++) {
-        ret = ret* 10 + DIGITS[alphabetMap[inputStr[i]]];
+        ret = ret* 10 + DIGITS[alphabetMap[(unsigned char)inputStr[i]]];
     }
     return ret;
 }
 
 void EquationPuzzle::buildAlphabetMap()
 {
-    for(char c: inputEquation) {
-        if( alphabetMap[c] < 10U) //the alphabet had been added before.
+    for(char& c: inputEquation) {
+        if( alphabetMap[(unsigned char)c] < 10U) //the alphabet had been added before.
             continue;
         
         if(( c != ' ') && (c != '*') && (c != '=')) {
-            alphabetMap[c] = alphabetNum;
+            alphabetMap[(unsigned char)c] = alphabetNum;
             alphabetNum++;
         }
         else {
-            alphabetMap[c] = c;
+            alphabetMap[(unsigned char)c] = c;
         }
     }
-    firstMultiplierLength  = firstMultiplier.size();
-    secondMultiplierLength = secondMultiplier.size();
-    productLength =          product.size();  
+    firstMultiplierLength = strlen(firstMultiplier);
+    secondMultiplierLength = strlen(secondMultiplier);
+    productLength = strlen(product);  
     
-    firstLetters[0] = alphabetMap[firstMultiplier[0]];
-    firstLetters[1] = alphabetMap[secondMultiplier[0]];
-    firstLetters[2] = alphabetMap[product[0]];
+    firstLetters[0] = alphabetMap[(unsigned char)firstMultiplier[0]];
+    firstLetters[1] = alphabetMap[(unsigned char)secondMultiplier[0]];
+    firstLetters[2] = alphabetMap[(unsigned char)product[0]];
     
-    lastLetters[0] = alphabetMap[firstMultiplier[firstMultiplierLength - 1]];
-    lastLetters[1] = alphabetMap[secondMultiplier[secondMultiplierLength - 1]];
-    lastLetters[2] = alphabetMap[product[productLength - 1]];
+    lastLetters[0] = alphabetMap[(unsigned char)firstMultiplier[firstMultiplierLength - 1]];
+    lastLetters[1] = alphabetMap[(unsigned char)secondMultiplier[secondMultiplierLength - 1]];
+    lastLetters[2] = alphabetMap[(unsigned char)product[productLength - 1]];
     
 
 #if DEBUG    
@@ -100,7 +112,7 @@ void EquationPuzzle::lookupNumberSet()
     buildAlphabetMap();
   
     int m1 = 0,m2 = 0,p = 0;
-    char value;
+    unsigned char value = 0;
     char bitmask[10] = {0};
     memset(bitmask, 1, alphabetNum);
     do {        
@@ -138,8 +150,8 @@ void EquationPuzzle::lookupNumberSet()
 #endif        
             
             if( p == m1 * m2 ) {
-                for(char c: inputEquation) {
-                    value = alphabetMap[c];                
+                for(char& c: inputEquation) {
+                    value = alphabetMap[(unsigned char)c];                
                     if(value < 10U)
                         value = DIGITS[value] + '0';
                     std::cout << value;
@@ -156,16 +168,16 @@ bool EquationPuzzle::readInputData(char * fileName)
     std::ifstream fs(fileName);
     if ( fs ) {
         getline(fs, inputEquation);
-        std::smatch smatch;
-        static const std::regex regex("^\\s*([A-Za-z0-9]+)\\s*\\*\\s*([A-Za-z0-9]+)\\s*=\\s*([A-Za-z0-9]+)\\s*$");
-        if(std::regex_search(inputEquation, smatch, regex)  && smatch.size() == 4 ) {            
-            firstMultiplier = smatch.str(1);
-            secondMultiplier = smatch.str(2);
-            product = smatch.str(3);
-        }
-        else {
-            return false;
-        }
+        firstMultiplier = (char *)malloc(inputEquation.size());
+        secondMultiplier = (char *)malloc(inputEquation.size());
+        product = (char *)malloc(inputEquation.size());
+        int length = 0;
+        const char * pChar = inputEquation.c_str();
+        length = getData(pChar, firstMultiplier);
+        pChar += length;
+        length = getData(pChar, secondMultiplier);
+        pChar += length;
+        length = getData(pChar, product);
         
 #if DEBUG
         std::cout << firstMultiplier << " * " << secondMultiplier << " = " << product << '\n';
@@ -178,6 +190,29 @@ bool EquationPuzzle::readInputData(char * fileName)
         return false;
     }
 
+}
+
+int EquationPuzzle::getData(const char* pSrc, char* pDest) 
+{
+    bool hasAlphabet = false;
+    int length = 0;
+    do {
+        length++;
+        if( isalnum( *pSrc ) ) {
+            hasAlphabet = true;
+            *pDest++ = *pSrc++;
+        }
+        else {
+            if( hasAlphabet ) {
+                *pDest = '\0';
+                break;
+            }
+            else {
+                pSrc++;
+            }
+        }
+    } while(*pSrc != '\n');
+    return length;
 }
 
 int main(int argc, char **argv)
