@@ -1,12 +1,31 @@
 ﻿#include <fstream>
 #include <sstream>
 #include <iostream>
-#include <string>
-#include <cstring>
-#include <algorithm>
+#include <string.h>
+#include <vector>
+#include <algorithm> 
+
 
 
 #define DEBUG 0
+
+struct User {
+    int userIndex;
+    int count;    
+    int userRequireBitSet;
+    std::vector<int> requiredSet;
+    User(int u = 0, int c = 0) {
+        userIndex = u;
+        count = c;
+        userRequireBitSet = 0;
+    };
+           
+    bool operator < (const User& user) const
+    {
+        return ( count < user.count);
+    }           
+};
+
 
 
 class TestLineAllocation
@@ -14,122 +33,147 @@ class TestLineAllocation
     private:    
         static const int MAX_USER_NUM = 20;
         static const int MAX_TESTLINE_NUM = 20;
-        int TESTLINEINDEX[20];
-        int testLineNum;
-        int userNum;
-        bool userRequireSet[MAX_USER_NUM][MAX_TESTLINE_NUM];
-    private:
+        int selectedTestLineSet;
+        int totalTestLineNum;
+        int totalUserNum;
+        int userRequireSet[MAX_USER_NUM][MAX_TESTLINE_NUM];
+        int userRequireBitSet[MAX_USER_NUM];
+        int userRequireCount[MAX_USER_NUM];
+        unsigned long totalAllocationNum;
+        std::vector<User> usersSortedByTestLineCount;
+    private:        
+        int lookup(int selectedTestLine, int nextUserNum);
     public:
         TestLineAllocation();
+        void optimizeData(); 
         void allocate();
-        bool readConfiguration(char * fileName);
-        void comb(int N, int K);
+        bool readConfiguration(const char * fileName);
 };
 
-TestLineAllocation::TestLineAllocation() 
+TestLineAllocation::TestLineAllocation()
 {
-    memset(userRequireSet, false, sizeof(userRequireSet));
-    memset(TESTLINEINDEX, 0, sizeof(TESTLINEINDEX));
+    totalAllocationNum = 1;
+    selectedTestLineSet = 0;
+    memset(userRequireSet,    0, sizeof(userRequireSet));
+    memset(userRequireBitSet, 0, sizeof(userRequireBitSet));
+    memset(userRequireCount,    0, sizeof(userRequireCount));
 }
 
-void TestLineAllocation::comb(int N, int K){
-    std::string bitmask(K, 1); // K leading 1's
-    bitmask.resize(N, 0); // N-K trailing 0's
-
-    // print integers and permute bitmask
-    do {
-        for (int i = 0; i < N; ++i) // [0..N-1] integers
-        {
-            if (bitmask[i]) std::cout << " " << i;
+int TestLineAllocation::lookup(int selectedTestLine, int userIterator)
+{
+    unsigned long totalCount = 1;
+    int nextUserNum = usersSortedByTestLineCount[userIterator].userIndex;
+    //printf("Entering lookup: userNum:%d, selectedTestLine:%d, selectedTestLineSet:%08X\n", nextUserNum, selectedTestLine, selectedTestLineSet);
+    int currentUserBitSet = userRequireBitSet[nextUserNum];
+    int bits = 0;
+    int new_possibilities = 0;
+    bits = ~(1 << selectedTestLine);
+    new_possibilities = bits & currentUserBitSet;
+    //printf("user index:%d, selectedTestLine:%d, new_possibilities:%08X, selectedTestLineSet:%08X, currentUserBitSet:%08X\n", nextUserNum, selectedTestLine, new_possibilities, selectedTestLineSet, currentUserBitSet);
+    if( !new_possibilities ) {
+        //printf("cannot select this :%08X, %08X\n", selectedTestLineSet, currentUserBitSet);
+        return 0;
+    }
+    else {
+        if(nextUserNum == usersSortedByTestLineCount[totalUserNum - 1].userIndex) {            
+            // Reach the last user. Clear selectedTestLineSet.
+            //selectedTestLineSet = 0;
+            int count = 0;
+            for(int i = 0; i < userRequireCount[nextUserNum]; i++) {                
+                bool canSelect = !((1 << userRequireSet[nextUserNum][i]) & selectedTestLineSet);
+                if(  canSelect ) {
+                    count++;
+#if DEBUG                    
+                    std::cout << "Found: ";
+                    int j = 0;
+                    while(j < 32) {
+                        if( (selectedTestLineSet & (1 << j)))
+                            std::cout << j + 1 << " ";
+                        j++;
+                    }
+                    std::cout << userRequireSet[nextUserNum][i] + 1;
+                    std::cout << "\n";
+#endif                    
+                }
+            }
+            //printf("To the last User. Return lookup: userNum:%d, selectedTestLineSet:%08X with count:%d\n", nextUserNum, selectedTestLineSet, count);
+            return count;
+        }        
+        else {            
+            int count = 0;
+            for(int i = 0; i < userRequireCount[nextUserNum]; i++) {
+                int testLine = userRequireSet[nextUserNum][i];
+                //std::cout << "processing user " << nextUserNum << " testLine:" << testLine << " selectedTestLineSet:" << std::hex << selectedTestLineSet << "\n";
+                bool cannotSelect = ((1 << testLine) & selectedTestLineSet);                
+                if(  cannotSelect ) {
+                    //If the test line is included in the user's list, skip it.
+                    continue;
+                }
+                else {                    
+                    selectedTestLineSet |= (1 << testLine);
+                    //std::cout << "Added user " << nextUserNum << "'s testline " <<  testLine << " into selectedTestLineSet " << std::hex << selectedTestLineSet << "\n";
+                    count += lookup(testLine, userIterator + 1);
+                    selectedTestLineSet &= ~(1 << testLine);
+                    //std::cout << "Remove user " << nextUserNum << "'s testline " <<  testLine << " from selectedTestLineSet " << std::hex << selectedTestLineSet << "\n";
+                    
+                    
+                }                
+            }
+            totalCount *= count;
+            //printf("Return lookup: nextUserNum:%d, selectedTestLineSet:%08X with count:%d, totalAllocationNum:%lu\n", nextUserNum, selectedTestLineSet, count, totalCount);
+            return count;
         }
-        std::cout << std::endl;
-    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
+    }
 }
 
+void TestLineAllocation::optimizeData() 
+{
+    std::sort(usersSortedByTestLineCount.begin(), usersSortedByTestLineCount.end()); 
+#if DEBUG    
+    for(const auto& user: usersSortedByTestLineCount) {
+        int index = user.userIndex;
+        std::cout << "userIndex:" << user.userIndex << "\tCount:" << user.count << "\tuserRequireCount:" << userRequireCount[index] << " Require:";
+        for(int i = 0; i < userRequireCount[index]; i++)
+            std::cout << userRequireSet[index][i] << "  ";
+        std::cout << "\n";
+    }
+#endif    
+}
 
 void TestLineAllocation::allocate()
 {
-    unsigned long goodNumber = 0;
-    unsigned long loop = 0;
-    char bitmask[20] = {0};
-    memset(bitmask, 1, userNum);
-    do {        
-        int j = 0;
-        for (int i = 0; i < testLineNum; ++i) // [0..N-1] integers
-        {
-            if (bitmask[i]) { 
-                TESTLINEINDEX[j++] = i;
-            }
-        }
-#if DEBUG
-        std::cout << "Combination:" << "\n";
-        for(int i = 0; i < userNum; i++) {
-            std::cout << TESTLINEINDEX[i] << " ";
-        }
-        std::cout << "\n";
-#endif        
-        do {
-            bool matched = true;
-            for(int i = 0; i < userNum; i++) {
-                if( !userRequireSet[i][TESTLINEINDEX[i]]) {
-                    matched = false;
-                    break;
-                }
-            }
-            if( matched ) {
-#if 0
-                for(int i = 0; i < userNum; i++) {
-                    std::cout << "Matched user:" << i + 1 << ", test line:" << TESTLINEINDEX[i] + 1 << " ";
-                }
-                std::cout << '\n';
-#endif                
-                goodNumber++;
-            }
-            
-#if DEBUG
-            std::cout << "LOOP:" << loop << " Number permutation:\n";
-            for(int i = 0; i < userNum; i++)
-                std::cout << TESTLINEINDEX[i]<< " ";
-            std::cout << '\n';
-#endif         
-        }while ( std::next_permutation(TESTLINEINDEX,TESTLINEINDEX + userNum) );
-    } while (std::prev_permutation(bitmask, bitmask + testLineNum));
-    
-    std::cout << goodNumber << '\n'; 
+    totalAllocationNum = lookup(MAX_TESTLINE_NUM + 1, 0);
+    std::cout << totalAllocationNum << "\n";
 }
 
-bool TestLineAllocation::readConfiguration(char * fileName) 
+bool TestLineAllocation::readConfiguration(const char * fileName) 
 {
     std::ifstream fs(fileName);
     if ( fs ) {
-        int data;        
         std::string line,x;
         getline(fs, line);
         std::istringstream ss( line );           
         getline( ss, x, ',' );
-        testLineNum = std::stoi(x);
+        totalTestLineNum = std::stoi(x);
         getline( ss, x, ',' );
-        userNum = std::stoi(x);
+        totalUserNum = std::stoi(x);
         int uIndex = 0;
-        while(getline(fs, line)) {
+        while(getline(fs, line) && !line.empty()) {
             std::istringstream ss( line );
+            int bitmap = 0;
+            int count = 0;
+            int testLineIndex = 0;
             while (getline( ss, x, ',' ))         
-           {
-               int tIndex = std::stoi(x) - 1; // convert data from 1-based to 0-based index.
-               userRequireSet[uIndex][tIndex] = true;
+           {               
+               testLineIndex = std::stoi(x) - 1; // convert data from 1-based to 0-based index.
+               bitmap |= (1 << testLineIndex);               
+               userRequireSet[uIndex][count++] = testLineIndex;               
            }
-           uIndex++;
+           userRequireBitSet[uIndex] = bitmap;
+           usersSortedByTestLineCount.push_back(User(uIndex, count));
+           userRequireCount[uIndex++] = count;          
         }
             
-#if DEBUG
-        for(int i = 0; i < userNum; i++) {
-            std::cout << i << ": ";
-            for(int j = 0; j < testLineNum; j++) {                
-                std::cout << userRequireSet[i][j]<< " ";
-            }
-            std::cout << "\n";
-        }
-#endif        
         return true;
     }
     else {
@@ -145,11 +189,10 @@ int main(int argc, char **argv)
         std::cout << "Incorrect parameters. Please give your file name." << '\n';
         return -1;
     }   
-    
     TestLineAllocation allocation;
     if( allocation.readConfiguration(argv[1]) ) {
+        allocation.optimizeData();
         allocation.allocate();
-        //allocation.comb(10, 5);
         return 0;
     }
     else {
