@@ -34,7 +34,7 @@ class TestLineAllocation
         static const int MAX_USER_NUM = 20;
         static const int MAX_TESTLINE_NUM = 20;
         int selectedTestLineSet;
-        int totalTestLineNum;
+        //int totalTestLineNum;
         int totalUserNum;
         int userRequireSet[MAX_USER_NUM][MAX_TESTLINE_NUM];
         int userRequireBitSet[MAX_USER_NUM];
@@ -63,15 +63,12 @@ int TestLineAllocation::lookup(int selectedTestLine, int userIterator)
 {
     unsigned long totalCount = 1;
     int nextUserNum = usersSortedByTestLineCount[userIterator].userIndex;
-    //printf("Entering lookup: userNum:%d, selectedTestLine:%d, selectedTestLineSet:%08X\n", nextUserNum, selectedTestLine, selectedTestLineSet);
     int currentUserBitSet = userRequireBitSet[nextUserNum];
     int bits = 0;
     int new_possibilities = 0;
     bits = ~(1 << selectedTestLine);
     new_possibilities = bits & currentUserBitSet;
-    //printf("user index:%d, selectedTestLine:%d, new_possibilities:%08X, selectedTestLineSet:%08X, currentUserBitSet:%08X\n", nextUserNum, selectedTestLine, new_possibilities, selectedTestLineSet, currentUserBitSet);
     if( !new_possibilities ) {
-        //printf("cannot select this :%08X, %08X\n", selectedTestLineSet, currentUserBitSet);
         return 0;
     }
     else {
@@ -103,20 +100,11 @@ int TestLineAllocation::lookup(int selectedTestLine, int userIterator)
             int count = 0;
             for(int i = 0; i < userRequireCount[nextUserNum]; i++) {
                 int testLine = userRequireSet[nextUserNum][i];
-                //std::cout << "processing user " << nextUserNum << " testLine:" << testLine << " selectedTestLineSet:" << std::hex << selectedTestLineSet << "\n";
-                bool cannotSelect = ((1 << testLine) & selectedTestLineSet);                
-                if(  cannotSelect ) {
-                    //If the test line is included in the user's list, skip it.
-                    continue;
-                }
-                else {                    
+                bool canSelect = !((1 << testLine) & selectedTestLineSet);                
+                if( canSelect ) {                    
                     selectedTestLineSet |= (1 << testLine);
-                    //std::cout << "Added user " << nextUserNum << "'s testline " <<  testLine << " into selectedTestLineSet " << std::hex << selectedTestLineSet << "\n";
                     count += lookup(testLine, userIterator + 1);
-                    selectedTestLineSet &= ~(1 << testLine);
-                    //std::cout << "Remove user " << nextUserNum << "'s testline " <<  testLine << " from selectedTestLineSet " << std::hex << selectedTestLineSet << "\n";
-                    
-                    
+                    selectedTestLineSet &= ~(1 << testLine);                 
                 }                
             }
             totalCount *= count;
@@ -154,7 +142,8 @@ bool TestLineAllocation::readConfiguration(const char * fileName)
         getline(fs, line);
         std::istringstream ss( line );           
         getline( ss, x, ',' );
-        totalTestLineNum = std::stoi(x);
+        //totalTestLineNum = std::stoi(x);
+        (void)std::stoi(x);
         getline( ss, x, ',' );
         totalUserNum = std::stoi(x);
         int uIndex = 0;
