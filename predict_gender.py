@@ -13,12 +13,10 @@ def features(name):
         'last3-letters': name[-3:],
     }        
     
-def fit(X):
+def fit(x_set):
     feature_names = []
     vocab = {}
-    for x in X:
-        #count = count + 1
-        #print("x", type(x), len(x),count)
+    for x in x_set:
         for f, v in x.items():
             f = "%s%s%s" % (f, '=', v)
             if f not in vocab:
@@ -32,81 +30,75 @@ def fit(X):
     return (feature_names, vocab)
 
 
-def transform( X, vocab):    
-    Xa = np.zeros((len(X), 6), dtype=int)
+def transform( x_set, vocab):    
+    xa = np.zeros((len(x_set), 6), dtype=int)
 
-    for i, x in enumerate(X):
+    for i, x in enumerate(x_set):
         for f, v in x.items():
             f_v = "%s%s%s" % (f, "=", v)
             try:
-                Xa[i][features_index()[f]] = vocab[f_v]
+                xa[i][features_index()[f]] = vocab[f_v]
             except KeyError:
                 pass
 
-    return Xa
+    return xa
 
 
-def Sigmoid(z):
+def sigmoid(z):
     try:
-        G_of_Z = float(1.0 / float((1.0 + math.exp(-1.0*z))))
+        g_of_z = float(1.0 / float((1.0 + math.exp(-1.0*z))))
     except:
         print("z, math", z)
-    return G_of_Z
+    return g_of_z
 
-def Hypothesis(theta, x):
+def hypothesis(theta, x):
     z = 0
     #print(type(theta), type(x))
     for i in range(6):
         pos = x[i]
         #print("Hypothesis:", i)
         z += theta[pos]
-    return Sigmoid(z)
+    return sigmoid(z)
 
-def Cost_Function(X,Y,theta,m):
-    sumOfErrors = 0
+def cost_function(x_set,y_set,theta,m):
+    sum_of_errors = 0
     for i in range(m):
-        xi = X[i]
-        hi = Hypothesis(theta,xi)
-        if Y[i] == 1:
-            error = Y[i] * math.log(hi)
-        elif Y[i] == 0:
+        xi = x_set[i]
+        hi = hypothesis(theta,xi)
+        if y_set[i] == 1:
+            error = y_set[i] * math.log(hi)
+        elif y_set[i] == 0:
             error = (1-Y[i]) * math.log(1-hi)
-        sumOfErrors += error
+        sum_of_errors += error
     const = -1/m
-    J = const * sumOfErrors
+    J = const * sum_of_errors
     #print( 'cost is ', J )
     return J
 
 
-def Logistic_Regression_By_Stochastic_Gradient_Descent(X,Y,alpha, theta):
-    m = len(Y)
+def logistic_regression_by_stochastic_gradient_descent(x_set,y_set,alpha, theta):
+    m = len(y_set)
     n = len(features_index()) # here we have 6 features
     best_theta = []
-    min_cost = 100.0
     max_score = 0.0
     for i in range(m):
         for idx in range(n):# features
-            j = X[i][idx]
-            theta[j] = theta[j] - alpha * (Hypothesis(theta, X[i]) - Y[i])  #xij is 1
+            j = x_set[i][idx]
+            theta[j] = theta[j] - alpha * (hypothesis(theta, x_set[i]) - y_set[i])  #xij is 1
+
         if i % 10 == 0:
-            #cost = Cost_Function(X,Y,theta,m)
-            score = Calculate_Score(theta)
+            score = calculate_score(theta)
             if score > max_score:
                 max_score = score
                 best_theta = theta
-            #print('cost is', cost)
-            #if cost < min_cost:
-            #    min_cost = cost
-            #    best_theta = theta
-    #print("min_cost:", min_cost)
-    #print("max_score:", max_score)
+
     return best_theta
                 
-def Calculate_Score(theta):
+def calculate_score(theta):
     score = 0
     length = len(X_validation)
     for i in range(length):
-        h_value = Hypothesis(theta, X_validation[i])
+        h_value = hypothesis(theta, X_validation[i])
         if h_value > 0.5:
             prediction = 1
         else:
@@ -117,7 +109,6 @@ def Calculate_Score(theta):
 
     score = float(score) / float(length)
 
-    #print( 'score:', score )
     return score
 
 def features_index():
@@ -140,18 +131,18 @@ def get_gender(predict):
     
 def do_test(vocabulary):
 
-    fileName_test = sys.argv[1]
+    filename_test = sys.argv[1]
 
-    names_test = np.genfromtxt(fileName_test, delimiter = ",", dtype = "U25",
+    names_test = np.genfromtxt(filename_test, delimiter = ",", dtype = "U25",
                           autostrip = True) 
                           
-    X_test = features(names_test) 
-    X_test = transform(X_test, vocabulary)
-    length = len(X_test)
+    x_test = features(names_test) 
+    x_test = transform(x_test, vocabulary)
+    length = len(x_test)
     predict = 0
 
     for i in range(length):
-        h_value = Hypothesis(theta, X_test[i])
+        h_value = hypothesis(theta, x_test[i])
         if h_value > 0.5:
             predict = 1
         else:
@@ -195,8 +186,6 @@ if __name__ == "__main__":
     Y_train, Y_validation = Y[:int(TRAIN_SPLIT * len(Y))], Y[int(TRAIN_SPLIT * len(Y)):]
 
     (g_feature_names, g_vocabulary) = fit(X_train)
-    #print("g_feature_names:\n", g_feature_names)
-    #print("g_vocabulary:\n", g_vocabulary)
     initial_theta = np.zeros((len(g_feature_names), 1), dtype=np.float64)
 
     X_validation = transform(X_validation, g_vocabulary)
@@ -204,7 +193,7 @@ if __name__ == "__main__":
     iterations = len(X_validation) 
 
 
-    theta = Logistic_Regression_By_Stochastic_Gradient_Descent(
+    theta = logistic_regression_by_stochastic_gradient_descent(
         transform(X_train, g_vocabulary), Y_train,
         alpha,initial_theta)
         

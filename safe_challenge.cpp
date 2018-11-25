@@ -154,19 +154,11 @@ void FeatureSelector::allocate()
     }
     
     std::cout << totalCost << "\n";
-#if DEBUG    
     for(int i = 0; i < featureNum; i++) {
         if(selectedFeatures[i]) {
             std::cout << i + 1 << std::endl;
         }
-    }
-#else
-    for(int i = 0; i < featureNum; i++) {
-        if(selectedFeatures[i]) {
-            std::cout << i << std::endl;
-        }
-    }
-#endif    
+    }  
 }
 
 bool FeatureSelector::readConfiguration(char * fileName) 
@@ -232,4 +224,3 @@ int main(int argc, char **argv)
         return -1;
     }
 }
-
