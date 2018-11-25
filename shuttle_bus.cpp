@@ -1,6 +1,5 @@
 ﻿#include <fstream>
 #include <climits>
-#include <stdio.h>
 
 static const int MAX_ROW      = 100;
 static const int MAX_COL      = 100;
@@ -22,14 +21,11 @@ int getData(FILE* fp, char inputData[])
         else {
             if(isDigit) {
                 inputData[i] = '\0';
-                break;
+                return atoi(inputData);
             }
         }
     }
-    if( isDigit ) {
-        return atoi(inputData);
-    }
-    else {
+    if(!isDigit) {
         if( c == EOF ) {
             return EOFOFFILE;
         }
@@ -37,6 +33,9 @@ int getData(FILE* fp, char inputData[])
             return SKIPDATA;
         }
     }
+    else {
+        return atoi(inputData);
+    }    
 }
 
 void handleInputData(char * fileName) 
@@ -59,21 +58,21 @@ void handleInputData(char * fileName)
         getData(fp, longestData);
 
         while((data = getData(fp, longestData)) != EOFOFFILE) {
-            if (data == SKIPDATA)
-                continue;
-            bigData = ( lastData > pLastRow[col_index] ) ? lastData : pLastRow[col_index];
-            newData = bigData + data;
-            pCurrentRow[col_index] = newData;
-          
-            if( ++col_index == M_columnNumber) {
-                col_index = 0;
-                lastData = 0;
-                pTemp = pLastRow;
-                pLastRow = pCurrentRow;
-                pCurrentRow = pTemp;                    
-            }
-            else {
-                lastData = newData;
+            if (data != SKIPDATA) {               
+                bigData = ( lastData > pLastRow[col_index] ) ? lastData : pLastRow[col_index];
+                newData = bigData + data;
+                pCurrentRow[col_index] = newData;
+              
+                if( ++col_index == M_columnNumber) {
+                    col_index = 0;
+                    lastData = 0;
+                    pTemp = pLastRow;
+                    pLastRow = pCurrentRow;
+                    pCurrentRow = pTemp;                    
+                }
+                else {
+                    lastData = newData;
+                }
             }
         }
         printf("%d\n", newData);
