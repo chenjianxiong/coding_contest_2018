@@ -8,7 +8,7 @@
 #include <algorithm>
 
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 struct Feature {
@@ -23,7 +23,8 @@ struct Feature {
 struct FeatureDep {
     int pos;
     int depCount;
-    FeatureDep(int p, int d) {pos = p;depCount = d;}
+    bool deleted;
+    FeatureDep(int p, int d) {pos = p;depCount = d;deleted = false;}
     bool operator < (const FeatureDep& dep) const
     {
         return depCount < dep.depCount;
@@ -58,7 +59,7 @@ void FeatureSelector::resolveFeatureFullDependencies(Feature & f) {
     while(!uncalculatedStack.empty()) {
         Feature * pf = uncalculatedStack.top();
 //        std::cout << "processing feature:" << pf->pos << '\n';
-        int depResolvedCound = 0;
+        unsigned int depResolvedCound = 0;
         for(auto& i : pf->dependencies) {
             if( features[i].isFullDependencisResolved ) {
                 for(auto& j : features[i].fullDependencies) {                
@@ -86,12 +87,11 @@ void FeatureSelector::resolveFeatureFullDependencies(Feature & f) {
 void FeatureSelector::displayFeatures() {
 #if DEBUG
     std::cout << "======Features as below:======\n";
-    for(const auto& f: features) {
-        std::cout << f.pos << "\t";
-        std::cout << "Cost\t" << f.cost << "\t";
-        std::cout << "totalCost\t" << f.totalCost << "\t";
+    for(const auto& f: sortedFeatureDep) {
+        std::cout << f.pos << "\t" << "deleted:" << f.deleted << "\t";        
+        std::cout << "Cost\t" << features[f.pos].cost << "\t";
         std::cout << "fullDependencies:\t";
-        for(auto & x : f.fullDependencies) {
+        for(auto & x : features[f.pos].fullDependencies) {
             std::cout << x << " ";
         }
         std::cout << "\n";
@@ -102,32 +102,64 @@ void FeatureSelector::displayFeatures() {
 
 void FeatureSelector::allocate()
 {
-    std::set<int> selectedFeatures;
+    int totalCost = 0;
+    bool selectedFeatures[1000] = {false};
     displayFeatures();
     for(auto& f: features) {
         if(f.dependencies.size() > 0 && !f.isFullDependencisResolved) {
             resolveFeatureFullDependencies(f);            
         }
+    }   
+    
+    displayFeatures();
+    int iterator = featureNum;
+    //while(iterator > 0) {    
+    if(1) {
+        for(auto& x : sortedFeatureDep) {
+            if(!x.deleted) {
+                if(features[x.pos].cost >= 0) {
+                    int cost = features[x.pos].cost;
+                    for(auto& dep: features[x.pos].fullDependencies) {
+                        if(!selectedFeatures[dep]) {
+                            cost += features[dep].cost;
+                        }
+                    }
+                    if (cost > 0) {
+                        for(auto& dep: features[x.pos].fullDependencies) {
+                            selectedFeatures[dep] = true;
+                        }
+                        selectedFeatures[x.pos] = true;
+                        x.deleted = true;
+                        iterator--;
+                    }
+                    else {
+                        x.deleted = true;
+                        iterator--;
+                    }                
+                }
+                else {
+                    x.deleted = true;
+                    iterator--;
+                }  
+            }
+        }
     }
     
+    displayFeatures();
     
-    displayFeatures();    
+    for(int i = 0; i < featureNum; i++) {
+        if(selectedFeatures[i]) {
+            totalCost += features[i].cost;
+        }
+    }
     
-    int totalCost = 0;
-    for(auto& i: selectedFeatures) {
-        totalCost += features[i].cost;
+    std::cout << "totalCost:" << totalCost << "\n";
+    for(int i = 0; i < featureNum; i++) {
+        if(selectedFeatures[i]) {
+            std::cout << i << std::endl;
+        }
     }
-    std::cout << totalCost << "\n";
-
-#if DEBUG   
-    for(auto& i: selectedFeatures) {
-        std::cout << i + 0 << "\n";
-    } 
-#else
-    for(auto& i: selectedFeatures) {
-        std::cout << i + 1 << "\n";
-    }
-#endif    
+  
 }
 
 bool FeatureSelector::readConfiguration(char * fileName) 
@@ -156,10 +188,11 @@ bool FeatureSelector::readConfiguration(char * fileName)
            }
            if(count == 1) {        
                feature.isFullDependencisResolved = true;
-               sortedFeatureDep.push_back(FeatureDep(index, 1));
+               sortedFeatureDep.push_back(FeatureDep(index, 0));
            }
            else {
                feature.isFullDependencisResolved = false;
+               sortedFeatureDep.push_back(FeatureDep(index, count));
            }
            feature.totalCost = feature.cost;                      
            feature.pos = index++;
