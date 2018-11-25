@@ -1,5 +1,6 @@
 ﻿#include <fstream>
 #include <climits>
+#include <stdio.h>
 
 static const int MAX_ROW      = 100;
 static const int MAX_COL      = 100;
@@ -26,7 +27,7 @@ int getData(FILE* fp, char inputData[])
         }
     }
     if( isDigit ) {
-        return std::stoi(inputData);
+        return atoi(inputData);
     }
     else {
         if( c == EOF ) {
@@ -55,7 +56,7 @@ void handleInputData(char * fileName)
         int * pCurrentRow = currentRow;
         int * pLastRow = lastRow;
         M_columnNumber = getData(fp, longestData);
-        (void)getData(fp, longestData);
+        getData(fp, longestData);
 
         while((data = getData(fp, longestData)) != EOFOFFILE) {
             if (data == SKIPDATA)
