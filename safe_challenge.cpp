@@ -8,7 +8,7 @@
 #include <algorithm>
 
 
-#define DEBUG 0
+#define DEBUG 1
 
 
 struct Feature {
@@ -18,28 +18,25 @@ struct Feature {
     bool isFullDependencisResolved;    
     std::vector<int> dependencies;
     std::set<int> fullDependencies;
-    bool operator < (const Feature& f) const
+};
+
+struct FeatureDep {
+    int pos;
+    int depCount;
+    FeatureDep(int p, int d) {pos = p;depCount = d;}
+    bool operator < (const FeatureDep& dep) const
     {
-        if( totalCost > f.totalCost)
-            return true;
-        else if(totalCost == f.totalCost) {
-            if( fullDependencies.size() < f.fullDependencies.size())
-                return true;
-            else
-                return false;
-        }
-        else
-            return false;
+        return depCount < dep.depCount;
     }
 };
 
-typedef struct Feature Feature;
 
 class FeatureSelector
 {
     private:  
-        int  itemNum;
-        std::vector<Feature> items;  
+        int  featureNum;
+        std::vector<Feature> features;  
+        std::vector<FeatureDep> sortedFeatureDep;
     private:
         void resolveFeatureFullDependencies(Feature &);
         void displayFeatures();
@@ -56,7 +53,6 @@ FeatureSelector::FeatureSelector()
 
 void FeatureSelector::resolveFeatureFullDependencies(Feature & f) {
     std::stack<Feature *> uncalculatedStack;
-    int index = 0;
     uncalculatedStack.push(&f);
 //    std::cout <<"push:\t"<< f.pos << '\n';
     while(!uncalculatedStack.empty()) {
@@ -64,32 +60,33 @@ void FeatureSelector::resolveFeatureFullDependencies(Feature & f) {
 //        std::cout << "processing feature:" << pf->pos << '\n';
         int depResolvedCound = 0;
         for(auto& i : pf->dependencies) {
-            if( items[i].isFullDependencisResolved ) {
-                for(auto& j : items[i].fullDependencies) {                
+            if( features[i].isFullDependencisResolved ) {
+                for(auto& j : features[i].fullDependencies) {                
                     pf->fullDependencies.insert(j);                    
                 }
                 depResolvedCound++;
             }
             else {
-                uncalculatedStack.push(&items[i]);
-//                std::cout << "push:\t" << items[i].pos << '\n';
+                uncalculatedStack.push(&features[i]);
+//                std::cout << "push:\t" << features[i].pos << '\n';
             }
         }
         if( depResolvedCound == pf->dependencies.size()) {
             pf->isFullDependencisResolved = true;
+            sortedFeatureDep[pf->pos].depCount = depResolvedCound;
             uncalculatedStack.pop();
 //            std::cout << "pop:\t" << pf->pos << '\n';
         }
     }
     for(auto& x : f.fullDependencies) {
-        f.totalCost += items[x].cost;
+        f.totalCost += features[x].cost;
     }        
 }
 
 void FeatureSelector::displayFeatures() {
 #if DEBUG
     std::cout << "======Features as below:======\n";
-    for(const auto& f: items) {
+    for(const auto& f: features) {
         std::cout << f.pos << "\t";
         std::cout << "Cost\t" << f.cost << "\t";
         std::cout << "totalCost\t" << f.totalCost << "\t";
@@ -105,26 +102,20 @@ void FeatureSelector::displayFeatures() {
 
 void FeatureSelector::allocate()
 {
+    std::set<int> selectedFeatures;
     displayFeatures();
-    for(auto& f: items) {
+    for(auto& f: features) {
         if(f.dependencies.size() > 0 && !f.isFullDependencisResolved) {
             resolveFeatureFullDependencies(f);            
         }
     }
-    std::set<int> selectedFeatures;
-    for(auto& f: items) {
-        if(f.totalCost > 0)
-            selectedFeatures.insert(f.pos);
-            for(auto& dep: f.fullDependencies) {
-                selectedFeatures.insert(dep);
-            }
-    }
+    
     
     displayFeatures();    
     
     int totalCost = 0;
     for(auto& i: selectedFeatures) {
-        totalCost += items[i].cost;
+        totalCost += features[i].cost;
     }
     std::cout << totalCost << "\n";
 
@@ -145,7 +136,7 @@ bool FeatureSelector::readConfiguration(char * fileName)
     if ( fs ) {
         std::string line,x;
         getline(fs, x);
-        itemNum = std::stoi(x);
+        featureNum = std::stoi(x);
         int index = 0;        
         while(getline(fs, line) && !line.empty()) {
 //            std::cout << line << '\n';
@@ -160,18 +151,19 @@ bool FeatureSelector::readConfiguration(char * fileName)
                }
                else {
                    feature.dependencies.push_back(data - 1); //convert to 0-based.
-                   feature.fullDependencies.insert(data - 1);
+                   feature.fullDependencies.insert(data - 1);                   
                }
            }
            if(count == 1) {        
                feature.isFullDependencisResolved = true;
+               sortedFeatureDep.push_back(FeatureDep(index, 1));
            }
            else {
                feature.isFullDependencisResolved = false;
            }
            feature.totalCost = feature.cost;                      
            feature.pos = index++;
-           items.push_back(feature);
+           features.push_back(feature);
         }
         return true;
     }
