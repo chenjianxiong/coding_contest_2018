@@ -27,10 +27,10 @@ class EquationPuzzle
         int secondMultiplierLength;
         int productLength;
         char lastDigitOfProduct[10][10];        
-    private:
         int word2Num(const char* s, int& N);
         void buildAlphabetMap();
         int getData(const char* , char* );
+		void doFullPermutation();
     public:
         EquationPuzzle();
         ~EquationPuzzle();
@@ -98,21 +98,53 @@ void EquationPuzzle::buildAlphabetMap()
     lastLetters[1] = alphabetMap[(unsigned char)secondMultiplier[secondMultiplierLength - 1]];
     lastLetters[2] = alphabetMap[(unsigned char)product[productLength - 1]];
     
+}
 
-#if DEBUG    
-    for(char c : inputEquation) {
-        printf("%c => %d ", c, alphabetMap[c]);
-    }
-    printf("alphabet Num:%d\n", alphabetNum);
-#endif        
+void EquationPuzzle::doFullPermutation()
+{
+	int m1 = 0;
+	int m2 = 0;
+	int p = 0;
+	unsigned char value = 0;
+	do {
+		//skip in case of the first letters is zero.
+		if ((DIGITS[firstLetters[0]] == 0) ||
+			(DIGITS[firstLetters[1]] == 0) ||
+			(DIGITS[firstLetters[2]] == 0)) {
+			continue;
+		}
+
+		if (lastDigitOfProduct[DIGITS[lastLetters[0]]] \
+			[DIGITS[lastLetters[1]]] != DIGITS[lastLetters[2]]) {
+			continue;
+		}
+
+		m1 = word2Num(firstMultiplier, firstMultiplierLength);
+		m2 = word2Num(secondMultiplier, secondMultiplierLength);
+
+		p = word2Num(product, productLength);
+
+
+
+		if (p == m1 * m2) {
+			for (char& c : inputEquation) {
+				value = alphabetMap[(unsigned char)c];
+				if (value < 10U)
+					value = DIGITS[value] + '0';
+				std::cout << value;
+			}
+			std::cout << '\n';
+            Log().Get(logINFO) << "My Message";
+		}
+	} while (std::next_permutation(DIGITS, DIGITS + alphabetNum));
+
 }
 
 void EquationPuzzle::lookupNumberSet()
 {
     buildAlphabetMap();
   
-    int m1 = 0,m2 = 0,p = 0;
-    unsigned char value = 0;
+
     char bitmask[10] = {0};
     memset(bitmask, 1, alphabetNum);
     do {        
@@ -123,42 +155,7 @@ void EquationPuzzle::lookupNumberSet()
                 DIGITS[j++] = i;                
             }
         }
-        do {
-            //skip in case of the first letters is zero.
-            if( (DIGITS[firstLetters[0]] == 0) || 
-                (DIGITS[firstLetters[1]] == 0) ||
-                (DIGITS[firstLetters[2]] == 0)) {
-                continue;
-            }
-                
-            if( lastDigitOfProduct[DIGITS[lastLetters[0]]] \
-                [DIGITS[lastLetters[1]]] != DIGITS[lastLetters[2]]) {
-                continue;
-            }
-                
-            m1 = word2Num(firstMultiplier, firstMultiplierLength);
-            m2 = word2Num(secondMultiplier, secondMultiplierLength);
-            
-            p = word2Num(product, productLength);
-
-#if DEBUG
-            std::cout << "LOOP:" << loop << " Number permutation:\n";
-            for(int i = 0; i < 10; i++)
-                printf("%d ", DIGITS[i]);
-            printf("\n");
-            std::cout << m1 << " * " << m2 << " = " << p << '\n';        
-#endif        
-            
-            if( p == m1 * m2 ) {
-                for(char& c: inputEquation) {
-                    value = alphabetMap[(unsigned char)c];                
-                    if(value < 10U)
-                        value = DIGITS[value] + '0';
-                    std::cout << value;
-                }
-                std::cout << '\n';
-            }
-        } while ( std::next_permutation(DIGITS,DIGITS + alphabetNum) );
+		doFullPermutation();
     } while (std::prev_permutation(bitmask, bitmask + 10));
 }
 
@@ -179,14 +176,10 @@ bool EquationPuzzle::readInputData(char * fileName)
         pChar += length;
         length = getData(pChar, product);
         
-#if DEBUG
-        std::cout << firstMultiplier << " * " << secondMultiplier << " = " << product << '\n';
-#endif        
-        
+   
         return true;
     }
     else {
-        std::cout << "Unable to open file." << '\n';
         return false;
     }
 
@@ -218,23 +211,15 @@ int EquationPuzzle::getData(const char* pSrc, char* pDest)
 int main(int argc, char **argv)
 {
     if( argc != 2 ) {
-        std::cout << "Incorrect parameters. Please give your file name." << '\n';
         return -1;
     }   
     
     EquationPuzzle puzzle;
-    try {
         if( puzzle.readInputData(argv[1]) ) {
             puzzle.lookupNumberSet();        
             return 0;
         }
         else {
-            std::cout << "Incorrect Data File.";
             return -1;
         }
-    }
-    catch (const std::exception& e)
-    {
-        return -1;        
-    }
 }
